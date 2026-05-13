@@ -1,43 +1,80 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useListOrders, useGetAdminStats, useUpdateOrderStatus, getListOrdersQueryKey, getGetAdminStatsQueryKey } from "@workspace/api-client-react";
+import React, { useState } from "react";
+import {
+  useListOrders,
+  useGetAdminStats,
+  useUpdateOrderStatus,
+  getListOrdersQueryKey,
+  getGetAdminStatsQueryKey,
+} from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { Order, OrderStatusUpdateStatus } from "@workspace/api-client-react";
+import { useRealtimeOrders } from "@/hooks/useRealtimeOrders";
+import { useNotificationSound } from "@/hooks/useSound";
+import ConnectionBadge from "@/components/ConnectionBadge";
 
 function OrderCard({ order }: { order: Order }) {
   const updateStatus = useUpdateOrderStatus();
   const queryClient = useQueryClient();
 
   const handleUpdate = (newStatus: OrderStatusUpdateStatus, e: React.MouseEvent) => {
-    e.preventDefault(); // prevent link click
-    updateStatus.mutate({ id: order.id, data: { status: newStatus } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
-      }
+    e.preventDefault();
+    // Optimistic update
+    queryClient.setQueryData<Order[]>(getListOrdersQueryKey(), (old) => {
+      if (!old) return old;
+      return old.map((o) => (o.id === order.id ? { ...o, status: newStatus } : o));
     });
+    updateStatus.mutate(
+      { id: order.id, data: { status: newStatus } },
+      {
+        onError: () => {
+          // Revert on error
+          queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
+        },
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
+        },
+      }
+    );
   };
+
+  const statusColor = {
+    pending: "border-l-destructive",
+    accepted: "border-l-primary",
+    preparing: "border-l-yellow-500",
+    ready: "border-l-green-500",
+    delivered: "border-l-muted",
+  }[order.status] ?? "border-l-muted";
 
   return (
     <Link href={`/admin/orders/${order.id}`}>
-      <Card className="hover:border-primary/50 cursor-pointer transition-colors relative overflow-hidden group">
-        <div className={`absolute top-0 left-0 w-1 h-full ${order.status === 'pending' ? 'bg-destructive' : order.status === 'ready' ? 'bg-green-500' : 'bg-primary'}`} />
-        <CardContent className="p-4 flex flex-col gap-4">
+      <Card className={`hover:border-primary/50 cursor-pointer transition-all relative overflow-hidden group border-l-4 ${statusColor}`}>
+        <CardContent className="p-4 flex flex-col gap-3">
           <div className="flex justify-between items-start">
             <div className="flex gap-2 items-center">
-              <Badge variant="outline" className="font-mono text-lg px-2 py-0.5">T{order.tableNumber}</Badge>
-              <Badge variant="secondary" className="uppercase text-xs">{order.status}</Badge>
+              <Badge variant="outline" className="font-mono text-lg px-2 py-0.5 font-bold">
+                T{order.tableNumber}
+              </Badge>
+              <Badge
+                variant="secondary"
+                className={`uppercase text-xs ${order.status === "pending" ? "text-destructive" : order.status === "ready" ? "text-green-400" : ""}`}
+              >
+                {order.status}
+              </Badge>
             </div>
-            <div className="text-muted-foreground text-xs font-mono">{new Date(order.createdAt).toLocaleTimeString()}</div>
+            <div className="text-muted-foreground text-xs font-mono">
+              {new Date(order.createdAt).toLocaleTimeString()}
+            </div>
           </div>
-          
-          <div className="space-y-1">
-            {order.items.slice(0, 3).map(item => (
-              <div key={item.menuItemId} className="flex justify-between text-sm">
-                <span className="truncate pr-2"><span className="text-muted-foreground font-mono mr-1">{item.quantity}x</span>{item.name}</span>
+
+          <div className="space-y-0.5">
+            {order.items.slice(0, 3).map((item) => (
+              <div key={item.menuItemId} className="flex text-sm gap-2">
+                <span className="text-primary font-mono font-bold shrink-0">{item.quantity}x</span>
+                <span className="truncate text-foreground/80">{item.name}</span>
               </div>
             ))}
             {order.items.length > 3 && (
@@ -45,23 +82,33 @@ function OrderCard({ order }: { order: Order }) {
             )}
           </div>
 
-          <div className="pt-2 border-t flex justify-between items-center mt-auto">
-            <div className="font-mono text-sm">${order.totalAmount.toFixed(2)}</div>
-            <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-              {order.status === 'pending' && (
+          <div className="pt-2 border-t flex justify-between items-center">
+            <div className="font-mono text-sm font-bold">${order.totalAmount.toFixed(2)}</div>
+            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+              {order.status === "pending" && (
                 <>
-                  <Button size="sm" variant="destructive" onClick={(e) => handleUpdate('delivered', e)}>Reject</Button>
-                  <Button size="sm" onClick={(e) => handleUpdate('accepted', e)}>Accept</Button>
+                  <Button size="sm" variant="destructive" disabled={updateStatus.isPending} onClick={(e) => handleUpdate("delivered", e)}>
+                    Reject
+                  </Button>
+                  <Button size="sm" disabled={updateStatus.isPending} onClick={(e) => handleUpdate("accepted", e)}>
+                    Accept
+                  </Button>
                 </>
               )}
-              {order.status === 'accepted' && (
-                <Button size="sm" onClick={(e) => handleUpdate('preparing', e)}>Prepare</Button>
+              {order.status === "accepted" && (
+                <Button size="sm" disabled={updateStatus.isPending} onClick={(e) => handleUpdate("preparing", e)}>
+                  Prepare
+                </Button>
               )}
-              {order.status === 'preparing' && (
-                <Button size="sm" onClick={(e) => handleUpdate('ready', e)}>Ready</Button>
+              {order.status === "preparing" && (
+                <Button size="sm" disabled={updateStatus.isPending} onClick={(e) => handleUpdate("ready", e)}>
+                  Ready
+                </Button>
               )}
-              {order.status === 'ready' && (
-                <Button size="sm" variant="outline" onClick={(e) => handleUpdate('delivered', e)}>Deliver</Button>
+              {order.status === "ready" && (
+                <Button size="sm" variant="outline" disabled={updateStatus.isPending} onClick={(e) => handleUpdate("delivered", e)}>
+                  Deliver
+                </Button>
               )}
             </div>
           </div>
@@ -72,76 +119,84 @@ function OrderCard({ order }: { order: Order }) {
 }
 
 export default function AdminDashboard() {
-  const { data: stats } = useGetAdminStats({ query: { refetchInterval: 3000 } });
-  const { data: orders = [] } = useListOrders(undefined, { query: { refetchInterval: 3000 } });
-  const [filter, setFilter] = useState<string>("active");
-  const previousPendingCount = useRef<number>(0);
+  const { playNewOrderAlert } = useNotificationSound();
+  const { status: connectionStatus } = useRealtimeOrders(playNewOrderAlert);
 
-  useEffect(() => {
-    const currentPending = orders.filter(o => o.status === 'pending').length;
-    if (currentPending > previousPendingCount.current) {
-      // Play beep
-      try {
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 0.1);
-      } catch (e) {
-        // ignore audio context errors
-      }
-    }
-    previousPendingCount.current = currentPending;
-  }, [orders]);
-
-  const filteredOrders = orders.filter(o => {
-    if (filter === 'active') return ['pending', 'accepted', 'preparing', 'ready'].includes(o.status);
-    if (filter === 'completed') return o.status === 'delivered';
-    return o.status === filter;
+  const { data: stats } = useGetAdminStats({ query: { refetchInterval: 10000 } });
+  const { data: orders = [] } = useListOrders(undefined, {
+    query: { refetchInterval: 10000 },
   });
+
+  const [filter, setFilter] = useState<string>("active");
+
+  const filteredOrders = orders
+    .filter((o) => {
+      if (filter === "active") return ["pending", "accepted", "preparing", "ready"].includes(o.status);
+      if (filter === "completed") return o.status === "delivered";
+      return o.status === filter;
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
     <div className="min-h-screen p-4 flex flex-col h-screen overflow-hidden">
-      <div className="flex gap-4 mb-6">
-        <Card className="flex-1 bg-card">
-          <CardContent className="p-4 flex justify-between items-center">
-            <div>
-              <div className="text-sm text-muted-foreground uppercase tracking-wider">Active</div>
-              <div className="text-3xl font-mono font-bold">{stats?.activeOrders || 0}</div>
-            </div>
-            <div>
-              <div className="text-sm text-muted-foreground uppercase tracking-wider text-destructive">Pending</div>
-              <div className="text-3xl font-mono font-bold text-destructive">{stats?.pendingOrders || 0}</div>
-            </div>
-            <div>
-              <div className="text-sm text-muted-foreground uppercase tracking-wider">Completed</div>
-              <div className="text-3xl font-mono font-bold">{stats?.completedToday || 0}</div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-lg font-bold font-mono uppercase tracking-widest">Kitchen Display</h1>
+        <div className="flex items-center gap-4">
+          <ConnectionBadge status={connectionStatus} />
+          <Link href="/">
+            <Button variant="outline" size="sm">Customer View</Button>
+          </Link>
+        </div>
       </div>
 
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 shrink-0">
-        <Button variant={filter === 'active' ? 'default' : 'outline'} onClick={() => setFilter('active')}>Active Orders</Button>
-        <Button variant={filter === 'pending' ? 'default' : 'outline'} onClick={() => setFilter('pending')}>Pending</Button>
-        <Button variant={filter === 'preparing' ? 'default' : 'outline'} onClick={() => setFilter('preparing')}>Preparing</Button>
-        <Button variant={filter === 'ready' ? 'default' : 'outline'} onClick={() => setFilter('ready')}>Ready</Button>
-        <Button variant={filter === 'completed' ? 'default' : 'outline'} onClick={() => setFilter('completed')}>Completed</Button>
+      {/* Stats */}
+      <Card className="mb-4">
+        <CardContent className="p-4 grid grid-cols-3 gap-4">
+          <div className="text-center">
+            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Active</div>
+            <div className="text-3xl font-mono font-bold">{stats?.activeOrders ?? 0}</div>
+          </div>
+          <div className="text-center border-x border-border">
+            <div className="text-xs uppercase tracking-wider mb-1 text-destructive">Pending</div>
+            <div className="text-3xl font-mono font-bold text-destructive">{stats?.pendingOrders ?? 0}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Done Today</div>
+            <div className="text-3xl font-mono font-bold">{stats?.completedToday ?? 0}</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Filters */}
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-1 shrink-0">
+        {["active", "pending", "preparing", "ready", "completed"].map((f) => (
+          <Button
+            key={f}
+            size="sm"
+            variant={filter === f ? "default" : "outline"}
+            onClick={() => setFilter(f)}
+            className="capitalize shrink-0"
+          >
+            {f === "active" ? "All Active" : f}
+            {f === "pending" && stats?.pendingOrders ? (
+              <span className="ml-1.5 bg-destructive text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                {stats.pendingOrders}
+              </span>
+            ) : null}
+          </Button>
+        ))}
       </div>
 
+      {/* Order Grid */}
       <div className="flex-1 overflow-y-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-12">
-          {filteredOrders.map(order => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-8">
+          {filteredOrders.map((order) => (
             <OrderCard key={order.id} order={order} />
           ))}
           {filteredOrders.length === 0 && (
-            <div className="col-span-full py-12 text-center text-muted-foreground">
-              No orders found for this filter.
+            <div className="col-span-full py-16 text-center text-muted-foreground">
+              No orders for this filter.
             </div>
           )}
         </div>

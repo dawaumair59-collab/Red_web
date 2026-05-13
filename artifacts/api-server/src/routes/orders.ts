@@ -8,6 +8,7 @@ import {
   UpdateOrderStatusParams,
   UpdateOrderStatusBody,
 } from "@workspace/api-zod";
+import { emitOrderCreated, emitOrderUpdated } from "../lib/socket";
 
 const router: IRouter = Router();
 
@@ -59,7 +60,10 @@ router.post("/orders", async (req, res): Promise<void> => {
     specialRequests: specialRequests ?? null,
   }).returning();
 
-  res.status(201).json(formatOrder(order));
+  const formatted = formatOrder(order);
+  emitOrderCreated(formatted as Record<string, unknown>);
+
+  res.status(201).json(formatted);
 });
 
 router.get("/orders/:id", async (req, res): Promise<void> => {
@@ -96,7 +100,10 @@ router.patch("/orders/:id/status", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Order not found" });
     return;
   }
-  res.json(formatOrder(order));
+  const formatted = formatOrder(order);
+  emitOrderUpdated(formatted as Record<string, unknown>);
+
+  res.json(formatted);
 });
 
 function formatOrder(o: typeof ordersTable.$inferSelect) {
