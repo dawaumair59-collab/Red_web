@@ -2,25 +2,17 @@ openapi: 3.1.0
 info:
   title: Api
   version: 0.1.0
-  description: Tasty Point Restaurant QR Ordering API
+  description: Restaurant Order Management API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
-  - name: menu
-    description: Menu categories and items
   - name: orders
     description: Customer orders
-  - name: tables
-    description: Restaurant tables and QR codes
-  - name: payments
-    description: Razorpay payment operations
   - name: admin
     description: Admin dashboard operations
-  - name: uploads
-    description: Cloudinary image uploads
 
 paths:
   /healthz:
@@ -36,259 +28,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
-  # ── MENU CATEGORIES ──────────────────────────────────────
-  /menu/categories:
-    get:
-      operationId: listCategories
-      tags: [menu]
-      summary: List all menu categories
-      responses:
-        "200":
-          description: List of categories
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Category"
-    post:
-      operationId: createCategory
-      tags: [menu]
-      summary: Create a new category (admin)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CategoryInput"
-      responses:
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Category"
-
-  /menu/categories/{id}:
-    patch:
-      operationId: updateCategory
-      tags: [menu]
-      summary: Update category (admin)
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CategoryInput"
-      responses:
-        "200":
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Category"
-    delete:
-      operationId: deleteCategory
-      tags: [menu]
-      summary: Delete category (admin)
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "204":
-          description: Deleted
-
-  # ── MENU ITEMS ────────────────────────────────────────────
-  /menu/items:
-    get:
-      operationId: listMenuItems
-      tags: [menu]
-      summary: List menu items, optionally filter by category
-      parameters:
-        - name: categoryId
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: available
-          in: query
-          required: false
-          schema:
-            type: boolean
-      responses:
-        "200":
-          description: List of items
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/MenuItem"
-    post:
-      operationId: createMenuItem
-      tags: [menu]
-      summary: Create menu item (admin)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/MenuItemInput"
-      responses:
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/MenuItem"
-
-  /menu/items/{id}:
-    get:
-      operationId: getMenuItem
-      tags: [menu]
-      summary: Get a single menu item
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Item detail
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/MenuItem"
-    patch:
-      operationId: updateMenuItem
-      tags: [menu]
-      summary: Update menu item (admin)
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/MenuItemUpdate"
-      responses:
-        "200":
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/MenuItem"
-    delete:
-      operationId: deleteMenuItem
-      tags: [menu]
-      summary: Delete menu item (admin)
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "204":
-          description: Deleted
-
-  # ── TABLES ───────────────────────────────────────────────
-  /tables:
-    get:
-      operationId: listTables
-      tags: [tables]
-      summary: List all tables
-      responses:
-        "200":
-          description: List of tables
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Table"
-    post:
-      operationId: createTable
-      tags: [tables]
-      summary: Create table (admin)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TableInput"
-      responses:
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Table"
-
-  /tables/{id}:
-    get:
-      operationId: getTable
-      tags: [tables]
-      summary: Get table info
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Table info
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Table"
-    delete:
-      operationId: deleteTable
-      tags: [tables]
-      summary: Delete table (admin)
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "204":
-          description: Deleted
-
   # ── ORDERS ───────────────────────────────────────────────
   /orders:
     get:
       operationId: listOrders
       tags: [orders]
-      summary: List orders (admin), optionally filter by status or table
+      summary: List orders, optionally filter by status or table number
       parameters:
         - name: status
           in: query
           required: false
           schema:
             type: string
-            enum: [pending, confirmed, preparing, ready, delivered, cancelled]
-        - name: tableId
+            enum: [pending, accepted, preparing, ready, delivered]
+        - name: tableNumber
           in: query
           required: false
           schema:
-            type: string
+            type: integer
       responses:
         "200":
           description: List of orders
@@ -301,7 +58,7 @@ paths:
     post:
       operationId: createOrder
       tags: [orders]
-      summary: Place a new order
+      summary: Place a new order (customer)
       requestBody:
         required: true
         content:
@@ -334,6 +91,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Order"
+
+  /orders/{id}/status:
     patch:
       operationId: updateOrderStatus
       tags: [orders]
@@ -352,77 +111,18 @@ paths:
               $ref: "#/components/schemas/OrderStatusUpdate"
       responses:
         "200":
-          description: Updated
+          description: Updated order
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Order"
-
-  # ── PAYMENTS ─────────────────────────────────────────────
-  /payments/create-order:
-    post:
-      operationId: createPaymentOrder
-      tags: [payments]
-      summary: Create Razorpay order for payment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PaymentOrderInput"
-      responses:
-        "201":
-          description: Razorpay order created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PaymentOrder"
-
-  /payments/verify:
-    post:
-      operationId: verifyPayment
-      tags: [payments]
-      summary: Verify Razorpay payment signature
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PaymentVerifyInput"
-      responses:
-        "200":
-          description: Payment verification result
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PaymentVerifyResult"
-
-  # ── UPLOADS ──────────────────────────────────────────────
-  /uploads/sign:
-    post:
-      operationId: getUploadSignature
-      tags: [uploads]
-      summary: Get Cloudinary upload signature (server-side signing)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UploadSignInput"
-      responses:
-        "200":
-          description: Signed upload params
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UploadSignResult"
 
   # ── ADMIN DASHBOARD ──────────────────────────────────────
   /admin/stats:
     get:
       operationId: getAdminStats
       tags: [admin]
-      summary: Get dashboard stats (total revenue, orders, popular items)
+      summary: Get dashboard stats
       responses:
         "200":
           description: Dashboard statistics
@@ -430,21 +130,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdminStats"
-
-  /admin/recent-orders:
-    get:
-      operationId: listRecentOrders
-      tags: [admin]
-      summary: Get 10 most recent orders for the dashboard
-      responses:
-        "200":
-          description: Recent orders
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Order"
 
 components:
   schemas:
@@ -455,83 +140,6 @@ components:
           type: string
       required: [status]
 
-    Category:
-      type: object
-      required: [id, name, slug, sortOrder]
-      properties:
-        id:        { type: string }
-        name:      { type: string }
-        slug:      { type: string }
-        imageUrl:  { type: ["string", "null"] }
-        sortOrder: { type: integer }
-        createdAt: { type: string }
-
-    CategoryInput:
-      type: object
-      required: [name, slug]
-      properties:
-        name:      { type: string, minLength: 1 }
-        slug:      { type: string, minLength: 1 }
-        imageUrl:  { type: string }
-        sortOrder: { type: integer }
-
-    MenuItem:
-      type: object
-      required: [id, name, price, categoryId, available]
-      properties:
-        id:          { type: string }
-        name:        { type: string }
-        description: { type: ["string", "null"] }
-        price:       { type: number }
-        imageUrl:    { type: ["string", "null"] }
-        categoryId:  { type: string }
-        available:   { type: boolean }
-        isVeg:       { type: boolean }
-        isFeatured:  { type: boolean }
-        createdAt:   { type: string }
-
-    MenuItemInput:
-      type: object
-      required: [name, price, categoryId]
-      properties:
-        name:        { type: string, minLength: 1 }
-        description: { type: string }
-        price:       { type: number, minimum: 0 }
-        imageUrl:    { type: string }
-        categoryId:  { type: string }
-        available:   { type: boolean }
-        isVeg:       { type: boolean }
-        isFeatured:  { type: boolean }
-
-    MenuItemUpdate:
-      type: object
-      properties:
-        name:        { type: string, minLength: 1 }
-        description: { type: string }
-        price:       { type: number, minimum: 0 }
-        imageUrl:    { type: string }
-        categoryId:  { type: string }
-        available:   { type: boolean }
-        isVeg:       { type: boolean }
-        isFeatured:  { type: boolean }
-
-    Table:
-      type: object
-      required: [id, number, qrCode]
-      properties:
-        id:        { type: string }
-        number:    { type: integer }
-        qrCode:    { type: string }
-        label:     { type: ["string", "null"] }
-        createdAt: { type: string }
-
-    TableInput:
-      type: object
-      required: [number]
-      properties:
-        number: { type: integer }
-        label:  { type: string }
-
     OrderItem:
       type: object
       required: [menuItemId, name, price, quantity]
@@ -540,56 +148,48 @@ components:
         name:       { type: string }
         price:      { type: number }
         quantity:   { type: integer }
-        imageUrl:   { type: ["string", "null"] }
+        notes:      { type: ["string", "null"] }
 
     Order:
       type: object
-      required: [id, tableId, tableNumber, status, items, totalAmount, createdAt]
+      required: [id, tableNumber, status, items, totalAmount, createdAt]
       properties:
-        id:              { type: string }
-        tableId:         { type: string }
-        tableNumber:     { type: integer }
+        id:           { type: string }
+        tableNumber:  { type: integer }
         status:
           type: string
-          enum: [pending, confirmed, preparing, ready, delivered, cancelled]
+          enum: [pending, accepted, preparing, ready, delivered]
         items:
           type: array
           items:
             $ref: "#/components/schemas/OrderItem"
-        totalAmount:     { type: number }
-        customerName:    { type: ["string", "null"] }
-        specialRequests: { type: ["string", "null"] }
-        paymentStatus:
-          type: string
-          enum: [unpaid, paid, refunded]
-        paymentMethod:
-          type: string
-          enum: [online, cod]
-        razorpayOrderId: { type: ["string", "null"] }
-        razorpayPaymentId: { type: ["string", "null"] }
-        createdAt:       { type: string }
+        totalAmount:      { type: number }
+        customerName:     { type: ["string", "null"] }
+        specialRequests:  { type: ["string", "null"] }
+        createdAt:        { type: string }
+        updatedAt:        { type: string }
 
     OrderInput:
       type: object
-      required: [tableId, items]
+      required: [tableNumber, items]
       properties:
-        tableId:
-          type: string
+        tableNumber:
+          type: integer
         customerName:
           type: string
         specialRequests:
           type: string
-        paymentMethod:
-          type: string
-          enum: [online, cod]
         items:
           type: array
           items:
             type: object
-            required: [menuItemId, quantity]
+            required: [menuItemId, name, price, quantity]
             properties:
               menuItemId: { type: string }
+              name:       { type: string }
+              price:      { type: number }
               quantity:   { type: integer, minimum: 1 }
+              notes:      { type: string }
 
     OrderStatusUpdate:
       type: object
@@ -597,74 +197,16 @@ components:
       properties:
         status:
           type: string
-          enum: [pending, confirmed, preparing, ready, delivered, cancelled]
-
-    PaymentOrderInput:
-      type: object
-      required: [orderId, amount]
-      properties:
-        orderId: { type: string }
-        amount:  { type: number }
-
-    PaymentOrder:
-      type: object
-      required: [razorpayOrderId, amount, currency, keyId]
-      properties:
-        razorpayOrderId: { type: string }
-        amount:          { type: number }
-        currency:        { type: string }
-        keyId:           { type: string }
-
-    PaymentVerifyInput:
-      type: object
-      required: [orderId, razorpayOrderId, razorpayPaymentId, razorpaySignature]
-      properties:
-        orderId:            { type: string }
-        razorpayOrderId:    { type: string }
-        razorpayPaymentId:  { type: string }
-        razorpaySignature:  { type: string }
-
-    PaymentVerifyResult:
-      type: object
-      required: [success]
-      properties:
-        success: { type: boolean }
-        message: { type: string }
-
-    UploadSignInput:
-      type: object
-      required: [folder]
-      properties:
-        folder: { type: string }
-
-    UploadSignResult:
-      type: object
-      required: [signature, timestamp, cloudName, apiKey]
-      properties:
-        signature:  { type: string }
-        timestamp:  { type: integer }
-        cloudName:  { type: string }
-        apiKey:     { type: string }
-        folder:     { type: string }
+          enum: [pending, accepted, preparing, ready, delivered]
 
     AdminStats:
       type: object
-      required: [totalOrders, totalRevenue, pendingOrders, popularItems, ordersByStatus]
+      required: [totalOrders, pendingOrders, activeOrders, completedToday, ordersByStatus]
       properties:
-        totalOrders:    { type: integer }
-        totalRevenue:   { type: number }
-        pendingOrders:  { type: integer }
-        todayOrders:    { type: integer }
-        todayRevenue:   { type: number }
-        popularItems:
-          type: array
-          items:
-            type: object
-            required: [name, count, revenue]
-            properties:
-              name:    { type: string }
-              count:   { type: integer }
-              revenue: { type: number }
+        totalOrders:     { type: integer }
+        pendingOrders:   { type: integer }
+        activeOrders:    { type: integer }
+        completedToday:  { type: integer }
         ordersByStatus:
           type: array
           items:
