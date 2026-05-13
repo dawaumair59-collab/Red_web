@@ -562,6 +562,9 @@ components:
         paymentStatus:
           type: string
           enum: [unpaid, paid, refunded]
+        paymentMethod:
+          type: string
+          enum: [online, cod]
         razorpayOrderId: { type: ["string", "null"] }
         razorpayPaymentId: { type: ["string", "null"] }
         createdAt:       { type: string }
@@ -576,6 +579,9 @@ components:
           type: string
         specialRequests:
           type: string
+        paymentMethod:
+          type: string
+          enum: [online, cod]
         items:
           type: array
           items:

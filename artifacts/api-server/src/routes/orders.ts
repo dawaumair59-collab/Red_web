@@ -69,6 +69,7 @@ router.post("/orders", async (req, res): Promise<void> => {
     customerName: parsed.data.customerName ?? null,
     specialRequests: parsed.data.specialRequests ?? null,
     paymentStatus: "unpaid",
+    paymentMethod: parsed.data.paymentMethod ?? "online",
   }).returning();
 
   res.status(201).json(formatOrder(order));
@@ -122,6 +123,7 @@ function formatOrder(o: typeof ordersTable.$inferSelect) {
     customerName: o.customerName ?? null,
     specialRequests: o.specialRequests ?? null,
     paymentStatus: o.paymentStatus,
+    paymentMethod: o.paymentMethod ?? "online",
     razorpayOrderId: o.razorpayOrderId ?? null,
     razorpayPaymentId: o.razorpayPaymentId ?? null,
     createdAt: o.createdAt.toISOString(),

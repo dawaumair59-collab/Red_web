@@ -19,6 +19,7 @@ export const ordersTable = pgTable("orders", {
   customerName: text("customer_name"),
   specialRequests: text("special_requests"),
   paymentStatus: text("payment_status").notNull().default("unpaid"),
+  paymentMethod: text("payment_method").notNull().default("online"),
   razorpayOrderId: text("razorpay_order_id"),
   razorpayPaymentId: text("razorpay_payment_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

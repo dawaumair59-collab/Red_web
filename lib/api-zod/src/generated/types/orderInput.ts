@@ -6,10 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { OrderInputItemsItem } from "./orderInputItemsItem";
+import type { OrderInputPaymentMethod } from "./orderInputPaymentMethod";
 
 export interface OrderInput {
   tableId: string;
   customerName?: string;
   specialRequests?: string;
+  paymentMethod?: OrderInputPaymentMethod;
   items: OrderInputItemsItem[];
 }

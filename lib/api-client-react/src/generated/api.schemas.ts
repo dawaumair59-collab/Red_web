@@ -112,6 +112,14 @@ export const OrderPaymentStatus = {
   refunded: "refunded",
 } as const;
 
+export type OrderPaymentMethod =
+  (typeof OrderPaymentMethod)[keyof typeof OrderPaymentMethod];
+
+export const OrderPaymentMethod = {
+  online: "online",
+  cod: "cod",
+} as const;
+
 export interface Order {
   id: string;
   tableId: string;
@@ -124,12 +132,21 @@ export interface Order {
   /** @nullable */
   specialRequests?: string | null;
   paymentStatus?: OrderPaymentStatus;
+  paymentMethod?: OrderPaymentMethod;
   /** @nullable */
   razorpayOrderId?: string | null;
   /** @nullable */
   razorpayPaymentId?: string | null;
   createdAt: string;
 }
+
+export type OrderInputPaymentMethod =
+  (typeof OrderInputPaymentMethod)[keyof typeof OrderInputPaymentMethod];
+
+export const OrderInputPaymentMethod = {
+  online: "online",
+  cod: "cod",
+} as const;
 
 export type OrderInputItemsItem = {
   menuItemId: string;
@@ -141,6 +158,7 @@ export interface OrderInput {
   tableId: string;
   customerName?: string;
   specialRequests?: string;
+  paymentMethod?: OrderInputPaymentMethod;
   items: OrderInputItemsItem[];
 }
 
