@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { useSearch, useLocation } from "wouter";
 import { Search, X, SlidersHorizontal, ShoppingCart, Leaf, Drumstick } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useListCategories, useListMenuItems } from "@workspace/api-client-react";
 import { Navbar } from "@/components/Navbar";
 import { CartDrawer } from "@/components/CartDrawer";
 import { MenuItemCard, MenuItemCardSkeleton } from "@/components/MenuItemCard";
@@ -10,31 +9,38 @@ import { ItemDetailModal } from "@/components/ItemDetailModal";
 import { useCart } from "@/contexts/CartContext";
 import { cn } from "@/lib/utils";
 
+// Static menu data (replaces API-driven menu)
+const MENU_ITEMS = [
+  { id: "m1", name: "Butter Chicken", description: "Rich, creamy tomato curry with tender chicken", price: 320, isVeg: false, available: true, isFeatured: true, categoryId: "mains", imageUrl: null },
+  { id: "m2", name: "Paneer Tikka Masala", description: "Grilled paneer in aromatic spiced gravy", price: 280, isVeg: true, available: true, isFeatured: true, categoryId: "mains", imageUrl: null },
+  { id: "m3", name: "Dal Makhani", description: "Slow-cooked black lentils, butter and cream", price: 220, isVeg: true, available: true, isFeatured: false, categoryId: "mains", imageUrl: null },
+  { id: "m4", name: "Grilled Fish Tikka", description: "Marinated fish grilled to perfection", price: 380, isVeg: false, available: true, isFeatured: true, categoryId: "mains", imageUrl: null },
+  { id: "m5", name: "Chicken Biryani", description: "Fragrant basmati rice with spiced chicken", price: 350, isVeg: false, available: true, isFeatured: true, categoryId: "mains", imageUrl: null },
+  { id: "m6", name: "Garlic Naan", description: "Soft leavened bread with garlic butter", price: 60, isVeg: true, available: true, isFeatured: false, categoryId: "breads", imageUrl: null },
+  { id: "m7", name: "Tandoori Roti", description: "Whole wheat bread from the clay oven", price: 40, isVeg: true, available: true, isFeatured: false, categoryId: "breads", imageUrl: null },
+  { id: "m8", name: "Butter Naan", description: "Fluffy naan brushed with melted butter", price: 55, isVeg: true, available: true, isFeatured: false, categoryId: "breads", imageUrl: null },
+  { id: "m9", name: "Onion Bhaji", description: "Crispy golden fried onion fritters", price: 150, isVeg: true, available: true, isFeatured: false, categoryId: "starters", imageUrl: null },
+  { id: "m10", name: "Seekh Kebab", description: "Minced lamb skewers, smoky and spiced", price: 240, isVeg: false, available: true, isFeatured: true, categoryId: "starters", imageUrl: null },
+  { id: "m11", name: "Samosa (2 pcs)", description: "Crispy pastry filled with spiced potato", price: 80, isVeg: true, available: true, isFeatured: false, categoryId: "starters", imageUrl: null },
+  { id: "m12", name: "Mango Lassi", description: "Chilled yoghurt drink with fresh mango", price: 120, isVeg: true, available: true, isFeatured: false, categoryId: "drinks", imageUrl: null },
+  { id: "m13", name: "Masala Chai", description: "Spiced Indian milk tea", price: 60, isVeg: true, available: true, isFeatured: false, categoryId: "drinks", imageUrl: null },
+  { id: "m14", name: "Cold Coffee", description: "Iced coffee with milk and sugar", price: 110, isVeg: true, available: true, isFeatured: false, categoryId: "drinks", imageUrl: null },
+  { id: "m15", name: "Gulab Jamun", description: "Soft milk-solid dumplings in rose syrup", price: 100, isVeg: true, available: true, isFeatured: false, categoryId: "desserts", imageUrl: null },
+  { id: "m16", name: "Kheer", description: "Rice pudding with cardamom and pistachios", price: 110, isVeg: true, available: true, isFeatured: false, categoryId: "desserts", imageUrl: null },
+];
+
+const CATEGORIES = [
+  { id: "mains", name: "Mains" },
+  { id: "breads", name: "Breads" },
+  { id: "starters", name: "Starters" },
+  { id: "drinks", name: "Drinks" },
+  { id: "desserts", name: "Desserts" },
+];
+
+type MenuItem = (typeof MENU_ITEMS)[number];
 type DietFilter = "all" | "veg" | "nonveg";
 
-interface MenuItem {
-  id: string;
-  name: string;
-  description?: string | null;
-  price: number;
-  imageUrl?: string | null;
-  isVeg?: boolean | null;
-  available: boolean;
-  isFeatured?: boolean | null;
-  categoryId?: string | null;
-}
-
-function CategoryPill({
-  label,
-  active,
-  onClick,
-  testId,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  testId?: string;
-}) {
+function CategoryPill({ label, active, onClick, testId }: { label: string; active: boolean; onClick: () => void; testId?: string }) {
   return (
     <button
       onClick={onClick}
@@ -100,31 +106,19 @@ export default function MenuPage() {
   const { items: cartItems, total } = useCart();
   const cartCount = cartItems.reduce((a, i) => a + i.quantity, 0);
 
-  const { data: categories, isLoading: catsLoading } = useListCategories();
-  const { data: allItems, isLoading: itemsLoading } = useListMenuItems({ available: true });
-
-  const loading = catsLoading || itemsLoading;
-
   const filtered = useMemo(() => {
-    let list = (allItems ?? []) as MenuItem[];
+    let list = MENU_ITEMS.filter((i) => i.available);
     if (activeCategory !== "all") list = list.filter((i) => i.categoryId === activeCategory);
     if (query.trim()) {
       const q = query.toLowerCase();
-      list = list.filter(
-        (i) =>
-          i.name.toLowerCase().includes(q) ||
-          (i.description ?? "").toLowerCase().includes(q)
-      );
+      list = list.filter((i) => i.name.toLowerCase().includes(q) || (i.description ?? "").toLowerCase().includes(q));
     }
     if (dietFilter === "veg") list = list.filter((i) => i.isVeg !== false);
     if (dietFilter === "nonveg") list = list.filter((i) => i.isVeg === false);
     return list;
-  }, [allItems, activeCategory, query, dietFilter]);
+  }, [activeCategory, query, dietFilter]);
 
-  const featured = useMemo(
-    () => (allItems ?? []).filter((i) => i.isFeatured && i.available).slice(0, 4) as MenuItem[],
-    [allItems]
-  );
+  const featured = useMemo(() => MENU_ITEMS.filter((i) => i.isFeatured && i.available).slice(0, 4), []);
 
   if (!tableId) {
     setLocation("/");
@@ -136,7 +130,6 @@ export default function MenuPage() {
       <Navbar onCartClick={() => setCartOpen(true)} tableId={tableId} />
 
       <main className="flex-1 max-w-2xl mx-auto w-full">
-        {/* Header */}
         <div className="px-4 pt-4 pb-2">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -158,7 +151,6 @@ export default function MenuPage() {
             </button>
           </div>
 
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <input
@@ -180,7 +172,6 @@ export default function MenuPage() {
             )}
           </div>
 
-          {/* Diet filter */}
           <AnimatePresence>
             {showFilters && (
               <motion.div
@@ -191,13 +182,11 @@ export default function MenuPage() {
                 className="overflow-hidden"
               >
                 <div className="flex gap-2 pt-3">
-                  {(
-                    [
-                      { id: "all", label: "All Items" },
-                      { id: "veg", label: "Veg Only", icon: <Leaf className="h-3 w-3 text-green-600" /> },
-                      { id: "nonveg", label: "Non-Veg", icon: <Drumstick className="h-3 w-3 text-red-600" /> },
-                    ] as { id: DietFilter; label: string; icon?: React.ReactNode }[]
-                  ).map(({ id, label, icon }) => (
+                  {([
+                    { id: "all", label: "All Items" },
+                    { id: "veg", label: "Veg Only", icon: <Leaf className="h-3 w-3 text-green-600" /> },
+                    { id: "nonveg", label: "Non-Veg", icon: <Drumstick className="h-3 w-3 text-red-600" /> },
+                  ] as { id: DietFilter; label: string; icon?: React.ReactNode }[]).map(({ id, label, icon }) => (
                     <button
                       key={id}
                       onClick={() => setDietFilter(id)}
@@ -209,8 +198,7 @@ export default function MenuPage() {
                       )}
                       data-testid={`filter-diet-${id}`}
                     >
-                      {icon}
-                      {label}
+                      {icon}{label}
                     </button>
                   ))}
                 </div>
@@ -220,13 +208,9 @@ export default function MenuPage() {
         </div>
 
         {/* Category pills */}
-        <div className="flex gap-2 overflow-x-auto px-4 py-2 scrollbar-hide no-scrollbar">
-          <CategoryPill
-            label="All"
-            active={activeCategory === "all"}
-            onClick={() => setActiveCategory("all")}
-          />
-          {(categories ?? []).map((cat) => (
+        <div className="flex gap-2 overflow-x-auto px-4 py-2 no-scrollbar">
+          <CategoryPill label="All" active={activeCategory === "all"} onClick={() => setActiveCategory("all")} />
+          {CATEGORIES.map((cat) => (
             <CategoryPill
               key={cat.id}
               label={cat.name}
@@ -237,12 +221,10 @@ export default function MenuPage() {
           ))}
         </div>
 
-        {/* Featured banner — shown only when not filtering */}
-        {!loading && activeCategory === "all" && !query && dietFilter === "all" && featured.length > 0 && (
+        {/* Featured */}
+        {activeCategory === "all" && !query && dietFilter === "all" && featured.length > 0 && (
           <div className="px-4 pb-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">
-              ⭐ Chef's Picks
-            </p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">⭐ Chef's Picks</p>
             <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
               {featured.map((item) => (
                 <button
@@ -251,12 +233,10 @@ export default function MenuPage() {
                   className="flex-shrink-0 flex items-center gap-2 bg-card border border-card-border rounded-xl px-3 py-2 shadow-sm hover:border-primary transition-colors"
                   data-testid={`featured-${item.id}`}
                 >
-                  {item.imageUrl && (
-                    <img src={item.imageUrl} alt={item.name} className="h-10 w-10 rounded-lg object-cover" />
-                  )}
+                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-xl">🍽️</div>
                   <div className="text-left">
                     <p className="text-xs font-semibold text-foreground">{item.name}</p>
-                    <p className="text-xs text-primary font-bold">₹{item.price.toFixed(0)}</p>
+                    <p className="text-xs text-primary font-bold">₹{item.price}</p>
                   </div>
                 </button>
               ))}
@@ -266,11 +246,7 @@ export default function MenuPage() {
 
         {/* Grid */}
         <div className="px-4 pb-4">
-          {loading ? (
-            <div className="grid grid-cols-2 gap-3 mt-1">
-              {Array.from({ length: 6 }).map((_, i) => <MenuItemCardSkeleton key={i} />)}
-            </div>
-          ) : filtered.length === 0 ? (
+          {filtered.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -279,7 +255,7 @@ export default function MenuPage() {
               <span className="text-5xl">🔍</span>
               <p className="font-semibold text-foreground">No items found</p>
               <p className="text-sm text-muted-foreground">
-                {query ? `No results for "${query}"` : "Nothing in this category yet"}
+                {query ? `No results for "${query}"` : "Nothing in this category"}
               </p>
               {(query || dietFilter !== "all") && (
                 <button
@@ -294,17 +270,12 @@ export default function MenuPage() {
           ) : (
             <>
               <p className="text-xs text-muted-foreground mb-2 mt-1">
-                {filtered.length} item{filtered.length !== 1 ? "s" : ""}
-                {query && ` for "${query}"`}
+                {filtered.length} item{filtered.length !== 1 ? "s" : ""}{query && ` for "${query}"`}
               </p>
               <motion.div layout className="grid grid-cols-2 gap-3">
                 <AnimatePresence>
                   {filtered.map((item) => (
-                    <MenuItemCard
-                      key={item.id}
-                      item={item}
-                      onDetails={setSelectedItem}
-                    />
+                    <MenuItemCard key={item.id} item={item} onDetails={setSelectedItem} />
                   ))}
                 </AnimatePresence>
               </motion.div>
@@ -313,17 +284,8 @@ export default function MenuPage() {
         </div>
       </main>
 
-      {/* Sticky cart */}
-      <StickyCartButton
-        count={cartCount}
-        total={total}
-        onClick={() => setCartOpen(true)}
-      />
-
-      {/* Item detail modal */}
+      <StickyCartButton count={cartCount} total={total} onClick={() => setCartOpen(true)} />
       <ItemDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} />
-
-      {/* Cart drawer */}
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} tableId={tableId} />
     </div>
   );

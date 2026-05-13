@@ -1,11 +1,11 @@
 import { Link, useLocation } from "wouter";
-import { UtensilsCrossed, LayoutDashboard, ClipboardList, BookOpen, Table2, LogOut } from "lucide-react";
+import { UtensilsCrossed, BarChart2, ClipboardList, BookOpen, Table2, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin", label: "Analytics", icon: BarChart2 },
   { href: "/admin/orders", label: "Orders", icon: ClipboardList },
   { href: "/admin/menu", label: "Menu", icon: BookOpen },
   { href: "/admin/tables", label: "Tables", icon: Table2 },

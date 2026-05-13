@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useListOrders, getListOrdersQueryKey, useUpdateOrderStatus } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { OrderStatusBadge, PaymentStatusBadge } from "@/components/OrderStatusBadge";
+import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { PageLoader } from "@/components/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -78,23 +78,22 @@ export default function AdminOrdersPage() {
                       <p className="font-semibold text-sm">Table {order.tableNumber}</p>
                       <p className="text-xs text-muted-foreground">#{order.id.slice(0, 8)} · {new Date(order.createdAt).toLocaleString()}</p>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <OrderStatusBadge status={order.status} />
-                      <PaymentStatusBadge status={order.paymentStatus} />
-                    </div>
+                    <OrderStatusBadge status={order.status} />
                   </div>
 
                   <div className="px-4 py-2 space-y-1">
                     {(order.items as Array<{ name: string; quantity: number; price: number }>).map((item, i) => (
                       <div key={i} className="flex items-center justify-between text-sm">
-                        <span>{item.name} x{item.quantity}</span>
+                        <span>{item.name} ×{item.quantity}</span>
                         <span className="text-muted-foreground">₹{(item.price * item.quantity).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
 
                   <div className="px-4 py-3 border-t border-border flex items-center justify-between">
-                    <span className="font-bold text-primary" data-testid={`text-total-${order.id}`}>₹{order.totalAmount.toFixed(2)}</span>
+                    <span className="font-bold text-primary" data-testid={`text-total-${order.id}`}>
+                      ₹{Number(order.totalAmount).toFixed(2)}
+                    </span>
                     <div className="flex items-center gap-2">
                       {NEXT_STATUS[order.status] && (
                         <Button
