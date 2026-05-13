@@ -1,10 +1,11 @@
-# [Project name]
+# Tasty Point
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A full-stack restaurant QR ordering web app — customers scan a table QR code, browse the menu, place orders, and pay via Razorpay. Admins manage the menu, tables, and orders through a protected dashboard.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080, proxied at /api)
+- `pnpm --filter @workspace/tasty-point run dev` — run the React frontend (proxied at /)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -14,31 +15,54 @@ _Replace the heading above with the project's name, and this line with one sente
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- Frontend: React + Vite, Tailwind CSS v4, shadcn/ui, TanStack Query, wouter
 - API: Express 5
-- DB: PostgreSQL + Drizzle ORM
+- DB: PostgreSQL + Drizzle ORM (tables: categories, menu_items, restaurant_tables, orders)
+- Auth: Supabase (admin only — email/password)
+- Payments: Razorpay (server-side order creation + client-side checkout.js)
+- Image uploads: Cloudinary (server-side signed uploads)
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/tasty-point/src/` — React frontend
+  - `pages/` — LandingPage, MenuPage, OrderTrackingPage, OrderSuccessPage
+  - `pages/admin/` — AdminLoginPage, AdminLayout, AdminDashboard, AdminOrdersPage, AdminMenuPage, AdminTablesPage
+  - `components/` — Navbar, MenuItemCard, CartDrawer, AdminSidebar, ImageUpload, OrderStatusBadge, LoadingSpinner
+  - `contexts/` — CartContext (localStorage), AdminAuthContext (Supabase)
+  - `lib/supabase.ts` — Supabase client (admin auth only)
+- `artifacts/api-server/src/routes/` — Express routes: menu, tables, orders, payments, uploads, admin, health
+- `lib/db/src/schema.ts` — Drizzle ORM schema (source of truth)
+- `lib/api-spec/openapi.yaml` — OpenAPI spec (source of truth for codegen)
+- `lib/api-client-react/src/generated/` — Generated React Query hooks
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Supabase is used **only** for admin authentication — all restaurant data (menu, orders, tables) lives in Replit PostgreSQL via Drizzle ORM.
+- QR codes are simply URL paths (`/menu?tableId=<uuid>`) stored in the DB. Scan → redirect to menu.
+- Cart state is persisted in `localStorage`; no server-side cart session.
+- Razorpay: server creates order (HMAC signed), client opens checkout.js, server verifies signature before marking payment as paid.
+- Cloudinary: server generates upload signature, client uploads directly to Cloudinary CDN.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Customer flow**: Scan QR → browse menu by category → add to cart → place order → track live status → pay via Razorpay
+- **Admin flow**: Login (Supabase) → dashboard stats → manage orders (status updates) → manage menu (categories + items with images) → manage tables (QR URL generation)
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Red/white theme (`--primary: 0 85% 45%`), mobile-first layout
+- Indian restaurant context (₹ currency, Indian dishes as seed data)
+- React + Vite (not Next.js)
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- After changing DB schema: run `pnpm --filter @workspace/db run push` then `pnpm run typecheck:libs` to rebuild lib declarations
+- After changing openapi.yaml: run `pnpm --filter @workspace/api-spec run codegen`
+- The API routes are all prefixed with `/api` by the reverse proxy — Express handles full paths like `/api/menu/categories`
+- Admin users must be created in Supabase dashboard (Authentication → Users)
 
 ## Pointers
 
