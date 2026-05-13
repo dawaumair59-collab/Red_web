@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ImageUpload } from "@/components/ImageUpload";
+import { MediaUpload } from "@/components/MediaUpload";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -203,7 +203,7 @@ export default function AdminMenuPage() {
                 <FormItem>
                   <FormLabel>Image</FormLabel>
                   <FormControl>
-                    <ImageUpload value={field.value} onChange={field.onChange} />
+                    <MediaUpload value={field.value} onChange={field.onChange} accept="image" />
                   </FormControl>
                 </FormItem>
               )} />
