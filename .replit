@@ -41,3 +41,9 @@ externalPort = 3001
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+ADMIN_EMAIL = "admin@tastypoint.com"
+ADMIN_PASSWORD = "TastyAdmin@2025"

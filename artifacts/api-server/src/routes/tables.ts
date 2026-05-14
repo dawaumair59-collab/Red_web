@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { db, tablesTable } from "@workspace/db";
 import {
   CreateTableBody,
-  GetTableParams,
   DeleteTableParams,
 } from "@workspace/api-zod";
 
@@ -32,7 +31,7 @@ router.post("/tables", async (req, res): Promise<void> => {
 });
 
 router.get("/tables/:id", async (req, res): Promise<void> => {
-  const params = GetTableParams.safeParse(req.params);
+  const params = DeleteTableParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;

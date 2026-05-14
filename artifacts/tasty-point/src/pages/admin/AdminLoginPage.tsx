@@ -3,8 +3,8 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { UtensilsCrossed, Lock } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { UtensilsCrossed, Lock, Eye, EyeOff } from "lucide-react";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -19,7 +19,9 @@ type LoginValues = z.infer<typeof loginSchema>;
 export default function AdminLoginPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { signIn } = useAdminAuth();
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -28,13 +30,10 @@ export default function AdminLoginPage() {
 
   const onSubmit = async (values: LoginValues) => {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: values.email,
-      password: values.password,
-    });
+    const { error } = await signIn(values.email, values.password);
     setLoading(false);
     if (error) {
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      toast({ title: "Login failed", description: error, variant: "destructive" });
     } else {
       setLocation("/admin");
     }
@@ -44,7 +43,7 @@ export default function AdminLoginPage() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-3">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-primary flex items-center justify-center">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg">
             <UtensilsCrossed className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -68,7 +67,13 @@ export default function AdminLoginPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="admin@restaurant.com" type="email" data-testid="input-email" {...field} />
+                      <Input
+                        placeholder="admin@tastypoint.com"
+                        type="email"
+                        autoComplete="email"
+                        data-testid="input-email"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -81,18 +86,47 @@ export default function AdminLoginPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input placeholder="••••••••" type="password" data-testid="input-password" {...field} />
+                      <div className="relative">
+                        <Input
+                          placeholder="••••••••"
+                          type={showPassword ? "text" : "password"}
+                          autoComplete="current-password"
+                          data-testid="input-password"
+                          className="pr-10"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                          tabIndex={-1}
+                        >
+                          {showPassword
+                            ? <EyeOff className="h-4 w-4" />
+                            : <Eye className="h-4 w-4" />
+                          }
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={loading} data-testid="button-submit">
-                {loading ? "Signing in..." : "Sign In"}
+              <Button
+                type="submit"
+                className="w-full h-11 font-semibold"
+                disabled={loading}
+                data-testid="button-submit"
+              >
+                {loading ? "Signing in…" : "Sign In"}
               </Button>
             </form>
           </Form>
         </div>
+
+        <p className="text-center text-xs text-muted-foreground">
+          Admin access only — contact the restaurant owner for credentials
+        </p>
       </div>
     </div>
   );

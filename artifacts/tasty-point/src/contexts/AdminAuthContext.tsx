@@ -1,36 +1,69 @@
-import { createContext, useContext, useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
-import type { Session } from "@supabase/supabase-js";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 type AdminAuthContextType = {
-  session: Session | null;
+  session: { email: string } | null;
   loading: boolean;
-  signOut: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  signOut: () => void;
 };
+
+const TOKEN_KEY = "tasty-point-admin-token";
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
 
+async function apiFetch(path: string, init?: RequestInit) {
+  const res = await fetch(path, init);
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, data };
+}
+
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<{ email: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
+  const verify = useCallback(async (token: string) => {
+    const { ok, data } = await apiFetch("/api/admin/auth/verify", {
+      headers: { Authorization: `Bearer ${token}` },
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-    });
-    return () => listener.subscription.unsubscribe();
+    if (ok && data.email) {
+      setSession({ email: data.email as string });
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+      setSession(null);
+    }
+    setLoading(false);
   }, []);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  useEffect(() => {
+    const stored = localStorage.getItem(TOKEN_KEY);
+    if (stored) {
+      verify(stored);
+    } else {
+      setLoading(false);
+    }
+  }, [verify]);
+
+  const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
+    const { ok, data } = await apiFetch("/api/admin/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (ok && data.token) {
+      localStorage.setItem(TOKEN_KEY, data.token as string);
+      setSession({ email: data.email as string });
+      return {};
+    }
+    return { error: (data.error as string) ?? "Login failed" };
+  };
+
+  const signOut = () => {
+    localStorage.removeItem(TOKEN_KEY);
+    setSession(null);
   };
 
   return (
-    <AdminAuthContext.Provider value={{ session, loading, signOut }}>
+    <AdminAuthContext.Provider value={{ session, loading, signIn, signOut }}>
       {children}
     </AdminAuthContext.Provider>
   );

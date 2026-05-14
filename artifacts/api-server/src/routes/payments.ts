@@ -48,7 +48,7 @@ router.post("/payments/create-order", async (req, res): Promise<void> => {
   }
 
   try {
-    const rzpOrder = await createRazorpayOrder(parsed.data.amount);
+    const rzpOrder = await createRazorpayOrder(Number(order.totalAmount));
     await db.update(ordersTable).set({ razorpayOrderId: rzpOrder.id }).where(eq(ordersTable.id, parsed.data.orderId));
     res.status(201).json({
       razorpayOrderId: rzpOrder.id,

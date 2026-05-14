@@ -24,7 +24,7 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
       formData.append("signature", signData.signature);
       formData.append("timestamp", String(signData.timestamp));
       formData.append("api_key", signData.apiKey);
-      formData.append("folder", signData.folder ?? "tasty-point");
+      formData.append("folder", "tasty-point");
 
       const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
       const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
