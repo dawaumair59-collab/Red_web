@@ -1,5 +1,5 @@
 import { useParams, useLocation } from "wouter";
-import { CheckCircle2, Banknote, Smartphone, Home, ClipboardList } from "lucide-react";
+import { CheckCircle2, Banknote, Smartphone, Home, ClipboardList, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useGetOrder, getGetOrderQueryKey } from "@workspace/api-client-react";
 import { Navbar } from "@/components/Navbar";
@@ -7,6 +7,8 @@ import { PageLoader } from "@/components/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { getPopularItems, getTimeGreeting } from "@/lib/recommendations";
+import { RecommendationBar } from "@/components/RecommendationBar";
 
 function ConfettiDot({ delay, color }: { delay: number; color: string }) {
   const x = (Math.random() - 0.5) * 300;
@@ -41,44 +43,34 @@ export default function OrderSuccessPage() {
     name: string; price: number; quantity: number;
   }> | undefined;
 
+  const popularItems = getPopularItems(4);
+  const greeting = getTimeGreeting();
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
-      <main className="flex-1 flex flex-col items-center justify-center px-5 py-10 gap-6">
+      <main className="flex-1 flex flex-col items-center px-5 py-10 gap-6">
 
         {/* Animated check + confetti */}
         <div className="relative flex items-center justify-center">
           {Array.from({ length: 16 }).map((_, i) => (
-            <ConfettiDot
-              key={i}
-              delay={0.3 + i * 0.04}
-              color={CONFETTI_COLORS[i % CONFETTI_COLORS.length]}
-            />
+            <ConfettiDot key={i} delay={0.3 + i * 0.04} color={CONFETTI_COLORS[i % CONFETTI_COLORS.length]} />
           ))}
-
           <motion.div
-            initial={{ scale: 0, rotate: -30 }}
-            animate={{ scale: 1, rotate: 0 }}
+            initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 350, damping: 22, delay: 0.1 }}
             className="w-28 h-28 rounded-full bg-green-100 flex items-center justify-center shadow-lg"
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.35, type: "spring", stiffness: 400, damping: 20 }}
-            >
+            <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.35, type: "spring", stiffness: 400, damping: 20 }}>
               <CheckCircle2 className="h-16 w-16 text-green-600" />
             </motion.div>
           </motion.div>
         </div>
 
         {/* Title */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="text-center space-y-1.5"
-        >
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }} className="text-center space-y-1.5">
           <h1 className="text-3xl font-bold text-foreground">
             {isCOD ? "Order Placed!" : "Payment Successful!"}
           </h1>
@@ -91,9 +83,7 @@ export default function OrderSuccessPage() {
 
         {/* Order card */}
         {order && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
             className="bg-card border border-card-border rounded-2xl w-full max-w-sm overflow-hidden shadow-sm"
           >
@@ -101,7 +91,6 @@ export default function OrderSuccessPage() {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Order Summary</p>
             </div>
 
-            {/* Items */}
             <div className="divide-y divide-border">
               {orderItems?.map((item, i) => (
                 <div key={i} className="px-5 py-2.5 flex justify-between text-sm">
@@ -133,7 +122,6 @@ export default function OrderSuccessPage() {
               </div>
             </div>
 
-            {/* Payment method pill */}
             <div className="px-5 pb-4">
               <div className={cn(
                 "flex items-center gap-2 rounded-xl px-3 py-2.5",
@@ -141,8 +129,7 @@ export default function OrderSuccessPage() {
               )}>
                 {isCOD
                   ? <Banknote className="h-4 w-4 text-amber-600 flex-shrink-0" />
-                  : <Smartphone className="h-4 w-4 text-green-600 flex-shrink-0" />
-                }
+                  : <Smartphone className="h-4 w-4 text-green-600 flex-shrink-0" />}
                 <div>
                   <p className={cn("text-xs font-semibold", isCOD ? "text-amber-700" : "text-green-700")}>
                     {isCOD ? "Pay at Counter" : "Paid via Razorpay"}
@@ -158,32 +145,29 @@ export default function OrderSuccessPage() {
         )}
 
         {/* Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.65 }}
-          className="flex flex-col gap-3 w-full max-w-sm"
-        >
-          <Button
-            className="w-full h-11 gap-2 font-semibold"
-            onClick={() => setLocation(`/order/${id}`)}
-            data-testid="button-track-order"
-          >
-            <ClipboardList className="h-4 w-4" />
-            Track Order Status
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.65 }} className="flex flex-col gap-3 w-full max-w-sm">
+          <Button className="w-full h-11 gap-2 font-semibold" onClick={() => setLocation(`/order/${id}`)} data-testid="button-track-order">
+            <ClipboardList className="h-4 w-4" /> Track Order Status
           </Button>
-          <Button
-            variant="outline"
-            className="w-full h-11 gap-2"
-            onClick={() => setLocation("/")}
-            data-testid="button-back-home"
-          >
-            <Home className="h-4 w-4" />
-            Back to Home
+          <Button variant="outline" className="w-full h-11 gap-2" onClick={() => setLocation("/")} data-testid="button-back-home">
+            <Home className="h-4 w-4" /> Back to Home
           </Button>
         </motion.div>
 
-        <p className="text-xs text-muted-foreground text-center">
+        {/* Next time recommendations */}
+        {popularItems.length > 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
+            className="w-full max-w-sm bg-card border border-border rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold text-foreground">{greeting} — Try Next Time</p>
+            </div>
+            <RecommendationBar items={popularItems} label="" />
+          </motion.div>
+        )}
+
+        <p className="text-xs text-muted-foreground text-center pb-4">
           Your food will be delivered to Table #{order?.tableNumber}. Enjoy your meal! 🍽
         </p>
       </main>

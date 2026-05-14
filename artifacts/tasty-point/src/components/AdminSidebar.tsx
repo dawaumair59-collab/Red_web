@@ -1,14 +1,15 @@
 import { Link, useLocation } from "wouter";
-import { UtensilsCrossed, BarChart2, ClipboardList, BookOpen, Table2, LogOut } from "lucide-react";
+import { UtensilsCrossed, BarChart2, ClipboardList, BookOpen, Table2, Box, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS = [
-  { href: "/admin", label: "Analytics", icon: BarChart2 },
-  { href: "/admin/orders", label: "Orders", icon: ClipboardList },
-  { href: "/admin/menu", label: "Menu", icon: BookOpen },
-  { href: "/admin/tables", label: "Tables", icon: Table2 },
+  { href: "/admin",        label: "Analytics", icon: BarChart2 },
+  { href: "/admin/orders", label: "Orders",    icon: ClipboardList },
+  { href: "/admin/menu",   label: "Menu",      icon: BookOpen },
+  { href: "/admin/tables", label: "Tables",    icon: Table2 },
+  { href: "/admin/ar",     label: "3D & AR",   icon: Box },
 ];
 
 export function AdminSidebar() {
@@ -39,7 +40,7 @@ export function AdminSidebar() {
                     ? "bg-primary text-white"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
-                data-testid={`link-admin-${label.toLowerCase()}`}
+                data-testid={`link-admin-${label.toLowerCase().replace(/\s+/g, "-")}`}
               >
                 <Icon className="h-4 w-4" />
                 {label}
