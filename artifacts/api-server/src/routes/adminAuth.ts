@@ -62,10 +62,12 @@ router.post("/admin/auth/login", (req: Request, res: Response): void => {
   }
 
   const emailMatch = email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
-  const passwordMatch = crypto.timingSafeEqual(
-    Buffer.from(password),
-    Buffer.from(ADMIN_PASSWORD)
-  );
+
+  const passwordBuf = Buffer.from(password);
+  const adminPasswordBuf = Buffer.from(ADMIN_PASSWORD);
+  const passwordMatch =
+    passwordBuf.length === adminPasswordBuf.length &&
+    crypto.timingSafeEqual(passwordBuf, adminPasswordBuf);
 
   if (!emailMatch || !passwordMatch) {
     logger.warn({ email }, "Failed admin login attempt");
