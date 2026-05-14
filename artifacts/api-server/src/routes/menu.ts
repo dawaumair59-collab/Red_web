@@ -187,6 +187,7 @@ function formatMenuItem(m: typeof menuItemsTable.$inferSelect) {
     description: m.description ?? null,
     price: Number(m.price),
     imageUrl: m.imageUrl ?? null,
+    videoUrl: m.videoUrl ?? null,
     categoryId: m.categoryId,
     available: m.available,
     isVeg: m.isVeg,

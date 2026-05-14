@@ -9,8 +9,41 @@ import {
   UpdateOrderStatusBody,
 } from "@workspace/api-zod";
 import { emitOrderCreated, emitOrderUpdated } from "../lib/socket";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
+
+const WHATSAPP_TOKEN = process.env["WHATSAPP_ACCESS_TOKEN"] ?? "";
+const WHATSAPP_PHONE_ID = process.env["WHATSAPP_PHONE_NUMBER_ID"] ?? "";
+const OWNER_PHONE = process.env["OWNER_PHONE_NUMBER"] ?? "";
+
+async function sendWhatsAppNotification(order: {
+  id: string;
+  tableNumber: number;
+  totalAmount: number;
+  itemCount: number;
+  customerName?: string | null;
+}): Promise<void> {
+  if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_ID || !OWNER_PHONE) return;
+  try {
+    const message = `🍽️ *New Order — Tasty Point*\n\nTable: *${order.tableNumber}*\nOrder ID: #${order.id.slice(0, 8).toUpperCase()}\nItems: ${order.itemCount}\nTotal: ₹${order.totalAmount.toFixed(0)}${order.customerName ? `\nCustomer: ${order.customerName}` : ""}\n\nCheck admin dashboard to confirm.`;
+    await fetch(`https://graph.facebook.com/v19.0/${WHATSAPP_PHONE_ID}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: OWNER_PHONE,
+        type: "text",
+        text: { body: message },
+      }),
+    });
+  } catch (err) {
+    logger.warn({ err }, "WhatsApp notification failed");
+  }
+}
 
 router.get("/orders", async (req, res): Promise<void> => {
   const queryParsed = ListOrdersQueryParams.safeParse(req.query);
@@ -75,6 +108,15 @@ router.post("/orders", async (req, res): Promise<void> => {
 
   const formatted = formatOrder(order);
   emitOrderCreated(formatted as Record<string, unknown>);
+
+  sendWhatsAppNotification({
+    id: order.id,
+    tableNumber: order.tableNumber,
+    totalAmount,
+    itemCount: orderItems.reduce((s, i) => s + i.quantity, 0),
+    customerName: order.customerName,
+  });
+
   res.status(201).json(formatted);
 });
 

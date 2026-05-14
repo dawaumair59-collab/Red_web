@@ -2,7 +2,8 @@ import { useState, useMemo } from "react";
 import { useSearch, useLocation } from "wouter";
 import { Search, X, SlidersHorizontal, ShoppingCart, Leaf, Drumstick } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MENU_ITEMS, CATEGORIES, type MenuItem } from "@/data/menuData";
+import { useListMenuItems, useListCategories } from "@workspace/api-client-react";
+import type { MenuItem } from "@workspace/api-client-react";
 import { Navbar } from "@/components/Navbar";
 import { CartDrawer } from "@/components/CartDrawer";
 import { MenuItemCard, MenuItemCardSkeleton } from "@/components/MenuItemCard";
@@ -13,21 +14,21 @@ import { cn } from "@/lib/utils";
 type DietFilter = "all" | "veg" | "nonveg";
 
 function CategoryPill({
-  label, active, onClick, testId,
-}: { label: string; active: boolean; onClick: () => void; testId?: string }) {
+  label, active, onClick,
+}: { label: string; active: boolean; onClick: () => void }) {
   return (
-    <button
+    <motion.button
+      whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      data-testid={testId}
       className={cn(
-        "flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
+        "flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 border",
         active
-          ? "bg-primary text-white shadow-sm"
-          : "bg-card border border-card-border text-muted-foreground hover:border-primary hover:text-primary"
+          ? "bg-red-600 text-white shadow-md border-red-600"
+          : "bg-white border-gray-200 text-gray-600 hover:border-red-400 hover:text-red-600"
       )}
     >
       {label}
-    </button>
+    </motion.button>
   );
 }
 
@@ -36,28 +37,29 @@ function StickyCartButton({ count, total, onClick }: { count: number; total: num
     <AnimatePresence>
       {count > 0 && (
         <motion.div
-          initial={{ y: 80, opacity: 0 }}
+          initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 80, opacity: 0 }}
+          exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", stiffness: 400, damping: 35 }}
           className="fixed bottom-6 left-0 right-0 z-40 flex justify-center px-4"
         >
-          <button
+          <motion.button
+            whileTap={{ scale: 0.97 }}
             onClick={onClick}
-            className="flex items-center gap-3 bg-primary text-white rounded-2xl shadow-lg px-5 py-3.5 max-w-sm w-full hover:bg-primary/90 active:scale-95 transition-transform"
+            className="flex items-center gap-3 bg-red-600 text-white rounded-2xl shadow-2xl px-5 py-4 max-w-sm w-full"
             data-testid="button-sticky-cart"
           >
             <div className="relative">
               <ShoppingCart className="h-5 w-5" />
-              <span className="absolute -top-2 -right-2 h-4 w-4 bg-white text-primary text-[10px] font-bold rounded-full flex items-center justify-center">
+              <span className="absolute -top-2.5 -right-2.5 h-5 w-5 bg-white text-red-600 text-[10px] font-black rounded-full flex items-center justify-center shadow">
                 {count}
               </span>
             </div>
-            <span className="flex-1 text-left text-sm font-semibold">
+            <span className="flex-1 text-left text-sm font-bold">
               {count} item{count !== 1 ? "s" : ""} in your order
             </span>
-            <span className="text-sm font-bold">₹{total.toFixed(0)}</span>
-          </button>
+            <span className="text-sm font-black">₹{total.toFixed(0)}</span>
+          </motion.button>
         </motion.div>
       )}
     </AnimatePresence>
@@ -80,40 +82,45 @@ export default function MenuPage() {
   const { items: cartItems, total } = useCart();
   const cartCount = cartItems.reduce((a, i) => a + i.quantity, 0);
 
+  const { data: allItems = [], isLoading: itemsLoading } = useListMenuItems({ available: true });
+  const { data: categories = [], isLoading: catsLoading } = useListCategories();
+  const isLoading = itemsLoading || catsLoading;
+
+  const featured = useMemo(() => allItems.filter((i) => i.isFeatured).slice(0, 4), [allItems]);
+
   const filtered = useMemo(() => {
-    let list = MENU_ITEMS.filter((i) => i.available);
+    let list = allItems;
     if (activeCategory !== "all") list = list.filter((i) => i.categoryId === activeCategory);
     if (query.trim()) {
       const q = query.toLowerCase();
-      list = list.filter((i) => i.name.toLowerCase().includes(q) || i.description.toLowerCase().includes(q));
+      list = list.filter((i) => i.name.toLowerCase().includes(q) || (i.description ?? "").toLowerCase().includes(q));
     }
-    if (dietFilter === "veg")    list = list.filter((i) => i.isVeg !== false);
+    if (dietFilter === "veg") list = list.filter((i) => i.isVeg !== false);
     if (dietFilter === "nonveg") list = list.filter((i) => i.isVeg === false);
     return list;
-  }, [activeCategory, query, dietFilter]);
-
-  const featured = useMemo(() => MENU_ITEMS.filter((i) => i.isFeatured && i.available).slice(0, 4), []);
+  }, [allItems, activeCategory, query, dietFilter]);
 
   if (!tableId) { setLocation("/"); return null; }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pb-28">
+    <div className="min-h-screen bg-gray-50 flex flex-col pb-32">
       <Navbar onCartClick={() => setCartOpen(true)} tableId={tableId} />
 
       <main className="flex-1 max-w-2xl mx-auto w-full">
-        <div className="px-4 pt-4 pb-2">
+        {/* Search + Filters */}
+        <div className="px-4 pt-4 pb-2 bg-white border-b border-gray-100 sticky top-14 z-30 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h1 className="text-xl font-bold text-foreground">Our Menu</h1>
-              <p className="text-xs text-muted-foreground">Table #{tableId.slice(0, 6)}</p>
+              <h1 className="text-lg font-black text-gray-900">Our Menu</h1>
+              <p className="text-xs text-gray-400">Table #{tableId.slice(0, 6)}</p>
             </div>
             <button
               onClick={() => setShowFilters((v) => !v)}
               className={cn(
-                "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors",
+                "flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors",
                 showFilters || dietFilter !== "all"
-                  ? "bg-primary text-white border-primary"
-                  : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+                  ? "bg-red-600 text-white border-red-600"
+                  : "border-gray-200 text-gray-500 hover:border-red-400 hover:text-red-600"
               )}
               data-testid="button-filters"
             >
@@ -123,17 +130,17 @@ export default function MenuPage() {
           </div>
 
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search dishes..."
-              className="w-full pl-9 pr-9 py-2.5 text-sm bg-muted rounded-xl border border-transparent focus:border-primary focus:bg-background focus:outline-none transition-colors"
+              placeholder="Search dishes, ingredients..."
+              className="w-full pl-9 pr-9 py-2.5 text-sm bg-gray-50 rounded-xl border border-gray-200 focus:border-red-500 focus:bg-white focus:outline-none transition-colors"
               data-testid="input-search"
             />
             {query && (
-              <button onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" data-testid="button-clear-search">
+              <button onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" data-testid="button-clear-search">
                 <X className="h-4 w-4" />
               </button>
             )}
@@ -156,8 +163,8 @@ export default function MenuPage() {
                       key={id}
                       onClick={() => setDietFilter(id)}
                       className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
-                        dietFilter === id ? "bg-primary text-white border-primary" : "border-border text-muted-foreground hover:border-primary"
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors",
+                        dietFilter === id ? "bg-red-600 text-white border-red-600" : "border-gray-200 text-gray-500 hover:border-red-400"
                       )}
                       data-testid={`filter-diet-${id}`}
                     >
@@ -170,44 +177,60 @@ export default function MenuPage() {
           </AnimatePresence>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto px-4 py-2 no-scrollbar">
+        {/* Categories */}
+        <div className="flex gap-2 overflow-x-auto px-4 py-3 no-scrollbar bg-white border-b border-gray-100">
           <CategoryPill label="All" active={activeCategory === "all"} onClick={() => setActiveCategory("all")} />
-          {CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <CategoryPill key={cat.id} label={cat.name} active={activeCategory === cat.id}
-              onClick={() => setActiveCategory(cat.id)} testId={`tab-category-${cat.id}`} />
+              onClick={() => setActiveCategory(cat.id)} />
           ))}
         </div>
 
-        {activeCategory === "all" && !query && dietFilter === "all" && featured.length > 0 && (
-          <div className="px-4 pb-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">⭐ Chef's Picks</p>
+        {/* Featured picks */}
+        {activeCategory === "all" && !query && dietFilter === "all" && featured.length > 0 && !isLoading && (
+          <div className="px-4 py-4 bg-white border-b border-gray-100">
+            <p className="text-xs font-black text-red-600 uppercase tracking-widest mb-3">⭐ Chef's Picks</p>
             <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
               {featured.map((item) => (
-                <button key={item.id} onClick={() => setSelectedItem(item)}
-                  className="flex-shrink-0 flex items-center gap-2 bg-card border border-card-border rounded-xl px-3 py-2 shadow-sm hover:border-primary transition-colors"
+                <motion.button
+                  key={item.id}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setSelectedItem(item)}
+                  className="flex-shrink-0 flex items-center gap-2.5 bg-red-50 border border-red-100 rounded-2xl px-3 py-2.5 hover:border-red-400 transition-colors"
                   data-testid={`featured-${item.id}`}
                 >
-                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-xl">🍽️</div>
-                  <div className="text-left">
-                    <p className="text-xs font-semibold text-foreground">{item.name}</p>
-                    <p className="text-xs text-primary font-bold">₹{item.price}</p>
+                  <div className="h-11 w-11 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xl">🍽️</div>
+                    )}
                   </div>
-                </button>
+                  <div className="text-left">
+                    <p className="text-xs font-bold text-gray-900 max-w-[90px] truncate">{item.name}</p>
+                    <p className="text-xs text-red-600 font-black">₹{item.price}</p>
+                  </div>
+                </motion.button>
               ))}
             </div>
           </div>
         )}
 
-        <div className="px-4 pb-4">
-          {filtered.length === 0 ? (
+        {/* Menu grid */}
+        <div className="px-4 py-4">
+          {isLoading ? (
+            <div className="grid grid-cols-2 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => <MenuItemCardSkeleton key={i} />)}
+            </div>
+          ) : filtered.length === 0 ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="flex flex-col items-center justify-center py-20 gap-3 text-center"
             >
               <span className="text-5xl">🔍</span>
-              <p className="font-semibold text-foreground">No items found</p>
-              <p className="text-sm text-muted-foreground">{query ? `No results for "${query}"` : "Nothing in this category"}</p>
+              <p className="font-bold text-gray-900">No items found</p>
+              <p className="text-sm text-gray-500">{query ? `No results for "${query}"` : "Nothing in this category"}</p>
               {(query || dietFilter !== "all") && (
-                <button className="text-sm text-primary font-medium underline"
+                <button className="text-sm text-red-600 font-semibold underline"
                   onClick={() => { setQuery(""); setDietFilter("all"); }} data-testid="button-clear-filters">
                   Clear filters
                 </button>
@@ -215,7 +238,7 @@ export default function MenuPage() {
             </motion.div>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground mb-2 mt-1">
+              <p className="text-xs text-gray-400 mb-3 font-medium">
                 {filtered.length} item{filtered.length !== 1 ? "s" : ""}{query && ` for "${query}"`}
               </p>
               <motion.div layout className="grid grid-cols-2 gap-3">

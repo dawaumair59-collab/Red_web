@@ -9,6 +9,7 @@ export const menuItemsTable = pgTable("menu_items", {
   description: text("description"),
   price: numeric("price", { precision: 10, scale: 2 }).notNull(),
   imageUrl: text("image_url"),
+  videoUrl: text("video_url"),
   categoryId: text("category_id").notNull().references(() => categoriesTable.id, { onDelete: "cascade" }),
   available: boolean("available").notNull().default(true),
   isVeg: boolean("is_veg").notNull().default(true),

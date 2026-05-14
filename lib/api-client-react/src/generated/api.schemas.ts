@@ -35,6 +35,8 @@ export interface MenuItem {
   price: number;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  videoUrl?: string | null;
   categoryId: string;
   available: boolean;
   isVeg: boolean;
@@ -49,6 +51,8 @@ export interface MenuItemInput {
   price: number;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  videoUrl?: string | null;
   categoryId: string;
   available?: boolean;
   isVeg?: boolean;
