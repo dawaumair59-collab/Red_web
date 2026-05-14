@@ -26,9 +26,29 @@ if (!basePath) {
   );
 }
 
+const normalizedBase = basePath.endsWith("/") ? basePath : `${basePath}/`;
+
+function rootRedirectPlugin() {
+  return {
+    name: "root-redirect",
+    configureServer(server: import("vite").ViteDevServer) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url ?? "/";
+        if (!url.startsWith(normalizedBase) && !url.startsWith("/__")) {
+          res.writeHead(302, { Location: normalizedBase });
+          res.end();
+          return;
+        }
+        next();
+      });
+    },
+  };
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
+    rootRedirectPlugin(),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
