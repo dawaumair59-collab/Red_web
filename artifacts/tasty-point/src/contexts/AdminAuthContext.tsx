@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 type AdminAuthContextType = {
   session: { email: string } | null;
@@ -26,9 +27,11 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (ok && data.email) {
+      setAuthTokenGetter(() => token);
       setSession({ email: data.email as string });
     } else {
       localStorage.removeItem(TOKEN_KEY);
+      setAuthTokenGetter(null);
       setSession(null);
     }
     setLoading(false);
@@ -50,7 +53,9 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ email, password }),
     });
     if (ok && data.token) {
-      localStorage.setItem(TOKEN_KEY, data.token as string);
+      const token = data.token as string;
+      localStorage.setItem(TOKEN_KEY, token);
+      setAuthTokenGetter(() => token);
       setSession({ email: data.email as string });
       return {};
     }
@@ -59,6 +64,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = () => {
     localStorage.removeItem(TOKEN_KEY);
+    setAuthTokenGetter(null);
     setSession(null);
   };
 

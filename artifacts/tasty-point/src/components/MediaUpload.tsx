@@ -15,9 +15,13 @@ interface MediaUploadProps {
 }
 
 async function getCloudinarySignature(folder: string) {
+  const token = localStorage.getItem("tasty-point-admin-token") ?? "";
   const res = await fetch("/api/uploads/sign", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify({ folder }),
   });
   if (!res.ok) throw new Error("Failed to get upload signature");

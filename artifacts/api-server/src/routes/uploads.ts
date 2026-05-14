@@ -5,7 +5,7 @@ import { GetUploadSignatureBody } from "@workspace/api-zod";
 const router: IRouter = Router();
 
 const CLOUDINARY_CLOUD_NAME = process.env.VITE_CLOUDINARY_CLOUD_NAME ?? "";
-const CLOUDINARY_API_KEY = process.env.VITE_CLOUDINARY_UPLOAD_PRESET ?? "";
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY ?? "";
 const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET ?? "";
 
 router.post("/uploads/sign", async (req, res): Promise<void> => {
